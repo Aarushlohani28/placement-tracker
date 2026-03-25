@@ -12,7 +12,10 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 app.use('/api/auth', require('./routes/AuthRoutes'))
-app.use('/api/companies', require('./routes/companyRoutes'))  // add this
+app.use('/api/companies', require('./routes/companyRoutes'))  
+app.use('/api/drives', require('./routes/driveRoutes'))
+app.use('/api/applications', require('./routes/applicationRoutes'))
+app.use('/api/interviews', require('./routes/interviewRoutes'))
 
 app.get('/', (req, res) => {
   res.send('Placement Tracker API is running!')
