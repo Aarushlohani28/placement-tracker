@@ -108,6 +108,14 @@ function Login({ onLogin }) {
 
 function DashboardShell({ authState, onLogout }) {
   const [currentView, setCurrentView] = useState('Dashboard')
+  const [drives, setDrives] = useState([
+    { id: 1, title: 'TechCorp Software Engineer', status: 'Registration Open', package: '12 LPA', eligibility: '7.5' },
+    { id: 2, title: 'DataSys Data Analyst', status: 'Closed', package: '8 LPA', eligibility: '7.0' }
+  ])
+  const [companies, setCompanies] = useState([
+    { id: 1, name: 'TechCorp', industry: 'Software' },
+    { id: 2, name: 'DataSys', industry: 'Data Analytics' }
+  ])
   
   const studentNavItems = ['Dashboard', 'Drives', 'Applications']
   const adminNavItems = ['Dashboard', 'Companies', 'Drives', 'Applications', 'Interviews']
@@ -119,11 +127,11 @@ function DashboardShell({ authState, onLogout }) {
       case 'Dashboard':
         return <Dashboard role={authState.role} name={authState.user.name} />
       case 'Drives':
-        return <Drives role={authState.role} />
+        return <Drives role={authState.role} drives={drives} setDrives={setDrives} />
       case 'Applications':
         return <Applications role={authState.role} />
       case 'Companies':
-        return <Companies />
+        return <Companies companies={companies} setCompanies={setCompanies} />
       case 'Interviews':
         return <Interviews />
       default:
@@ -212,29 +220,57 @@ function Dashboard({ role, name }) {
   )
 }
 
-function Drives({ role }) {
+function Drives({ role, drives, setDrives }) {
+  const [showForm, setShowForm] = useState(false)
+  const [newDrive, setNewDrive] = useState({ title: '', status: 'Registration Open', package: '', eligibility: '' })
+
+  const handleAdd = (e) => {
+    e.preventDefault()
+    if (newDrive.title) {
+      setDrives([...drives, { id: Date.now(), ...newDrive }])
+      setShowForm(false)
+      setNewDrive({ title: '', status: 'Registration Open', package: '', eligibility: '' })
+    }
+  }
+
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <h2>Placement Drives List</h2>
-        {role === 'admin' && <button>+ Add New Drive</button>}
-      </div>
-      
-      <div style={{ padding: '1.5rem', border: '1px solid var(--color-khaki)', borderRadius: '8px', marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <h3 style={{ margin: 0, color: 'var(--color-bistre)' }}>TechCorp Software Engineer</h3>
-          <span style={{ background: 'var(--color-chamois)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>Registration Open</span>
-        </div>
-        <p style={{ marginTop: '0.5rem', color: 'var(--color-coffee)' }}>Package: 12 LPA | Eligibility CGPA: 7.5</p>
-        {role === 'student' && <button style={{ marginTop: '1rem' }}>Apply Now</button>}
+        {role === 'admin' && <button onClick={() => setShowForm(!showForm)}>{showForm ? 'Cancel' : '+ Add New Drive'}</button>}
       </div>
 
-      <div style={{ padding: '1.5rem', border: '1px solid var(--color-khaki)', borderRadius: '8px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <h3 style={{ margin: 0, color: 'var(--color-bistre)' }}>DataSys Data Analyst</h3>
-          <span style={{ background: 'var(--color-khaki)', color: 'var(--color-bistre)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>Closed</span>
-        </div>
-        <p style={{ marginTop: '0.5rem', color: 'var(--color-coffee)' }}>Package: 8 LPA | Eligibility CGPA: 7.0</p>
+      {showForm && (
+        <form onSubmit={handleAdd} style={{ padding: '1.5rem', border: '1px solid var(--color-chamois)', borderRadius: '8px', marginBottom: '1.5rem', background: '#faf8f5' }}>
+          <h3 style={{ marginTop: 0 }}>Add New Drive</h3>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+            <input placeholder="Job Title (e.g. Acme SWE)" value={newDrive.title} onChange={e => setNewDrive({...newDrive, title: e.target.value})} style={{ flex: 1, minWidth: '200px' }} required />
+            <input placeholder="Package (e.g. 10 LPA)" value={newDrive.package} onChange={e => setNewDrive({...newDrive, package: e.target.value})} style={{ flex: 1, minWidth: '150px' }} required />
+            <input placeholder="Eligibility CGPA (e.g. 7.0)" value={newDrive.eligibility} onChange={e => setNewDrive({...newDrive, eligibility: e.target.value})} style={{ flex: 1, minWidth: '150px' }} required />
+          </div>
+          <button type="submit" style={{ background: 'var(--color-bistre)' }}>Submit Drive</button>
+        </form>
+      )}
+      
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {drives.map(drive => (
+          <div key={drive.id} style={{ padding: '1.5rem', border: '1px solid var(--color-khaki)', borderRadius: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <h3 style={{ margin: 0, color: 'var(--color-bistre)' }}>{drive.title}</h3>
+              <span style={{ 
+                background: drive.status === 'Registration Open' ? 'var(--color-chamois)' : 'var(--color-khaki)', 
+                color: drive.status === 'Registration Open' ? 'white' : 'var(--color-bistre)', 
+                padding: '0.2rem 0.5rem', 
+                borderRadius: '4px', 
+                fontSize: '0.8rem' 
+              }}>
+                {drive.status}
+              </span>
+            </div>
+            <p style={{ marginTop: '0.5rem', color: 'var(--color-coffee)' }}>Package: {drive.package} | Eligibility CGPA: {drive.eligibility}</p>
+            {role === 'student' && drive.status === 'Registration Open' && <button style={{ marginTop: '1rem' }}>Apply Now</button>}
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -249,14 +285,45 @@ function Applications({ role }) {
   )
 }
 
-function Companies() {
+function Companies({ companies, setCompanies }) {
+  const [showForm, setShowForm] = useState(false)
+  const [newComp, setNewComp] = useState({ name: '', industry: '' })
+
+  const handleAdd = (e) => {
+    e.preventDefault()
+    if (newComp.name) {
+      setCompanies([...companies, { id: Date.now(), ...newComp }])
+      setShowForm(false)
+      setNewComp({ name: '', industry: '' })
+    }
+  }
+
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h2>Partner Companies</h2>
-        <button>+ Add Company</button>
+        <button onClick={() => setShowForm(!showForm)}>{showForm ? 'Cancel' : '+ Add Company'}</button>
       </div>
-      <p>Manage company profiles and details here.</p>
+      
+      {showForm && (
+        <form onSubmit={handleAdd} style={{ padding: '1.5rem', border: '1px solid var(--color-chamois)', borderRadius: '8px', marginBottom: '1.5rem', background: '#faf8f5' }}>
+          <h3 style={{ marginTop: 0 }}>Add New Company</h3>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+            <input placeholder="Company Name" value={newComp.name} onChange={e => setNewComp({...newComp, name: e.target.value})} style={{ flex: 1, minWidth: '200px' }} required />
+            <input placeholder="Industry (e.g. Finance)" value={newComp.industry} onChange={e => setNewComp({...newComp, industry: e.target.value})} style={{ flex: 1, minWidth: '200px' }} required />
+          </div>
+          <button type="submit" style={{ background: 'var(--color-bistre)' }}>Submit Company</button>
+        </form>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {companies.map(company => (
+          <div key={company.id} style={{ padding: '1.2rem', border: '1px solid var(--color-khaki)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontWeight: 'bold', color: 'var(--color-bistre)' }}>{company.name}</span>
+            <span style={{ color: 'var(--color-coffee)' }}>{company.industry}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
