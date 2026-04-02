@@ -215,13 +215,13 @@ function Dashboard({ role, name }) {
 function Drives({ role }) {
   return (
     <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <h2>Placement Drives List</h2>
         {role === 'admin' && <button>+ Add New Drive</button>}
       </div>
       
       <div style={{ padding: '1.5rem', border: '1px solid var(--color-khaki)', borderRadius: '8px', marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
           <h3 style={{ margin: 0, color: 'var(--color-bistre)' }}>TechCorp Software Engineer</h3>
           <span style={{ background: 'var(--color-chamois)', color: 'white', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>Registration Open</span>
         </div>
@@ -230,7 +230,7 @@ function Drives({ role }) {
       </div>
 
       <div style={{ padding: '1.5rem', border: '1px solid var(--color-khaki)', borderRadius: '8px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
           <h3 style={{ margin: 0, color: 'var(--color-bistre)' }}>DataSys Data Analyst</h3>
           <span style={{ background: 'var(--color-khaki)', color: 'var(--color-bistre)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem' }}>Closed</span>
         </div>
@@ -252,7 +252,7 @@ function Applications({ role }) {
 function Companies() {
   return (
     <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h2>Partner Companies</h2>
         <button>+ Add Company</button>
       </div>
