@@ -23,8 +23,10 @@ This application shell currently uses simulated application state to demonstrate
 
 ### 1. The Welcome / Login Screen
 * **Color Palette Check**: You will immediately notice the custom color palette matching the requested professional dark brown aesthetic.
-* **Simulated Login**: Leave the email and password empty (or fill them with random text). 
-* **JSON Debug Window**: Select a role ("Student" or "Admin"), then click "Login". You'll see a simulated "backend response" in a dark block at the bottom of the screen showing the generated JSON Web Token (JWT) before the view redirects.
+* **Simulated Login**: You can use the following test credentials:
+  * **Student**: Email `student@test.com`, Password `any`
+  * **Admin**: Email `admin@test.com`, Password `any`
+* **JSON Debug Window**: Select a role ("Student" or "Admin"), fill in the test credentials, then click "Login". You'll see a simulated "backend response" in a dark block at the bottom of the screen showing the generated JSON Web Token (JWT) before the view redirects.
 
 ### 2. Testing as a "Student"
 * On the Login screen, choose **Student** and log in.
