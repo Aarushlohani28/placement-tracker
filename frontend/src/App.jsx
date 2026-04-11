@@ -1,21 +1,50 @@
 import { useState, useEffect } from 'react'
+import api from './api'
 import './index.css'
 
+// ─── helpers ───────────────────────────────────────────────
+const saveAuth = (data) => {
+  localStorage.setItem('token', data.token)
+  localStorage.setItem('user', JSON.stringify({
+    _id: data._id,
+    name: data.name,
+    email: data.email,
+    role: data.role,
+    cgpa: data.cgpa,
+    branch: data.branch
+  }))
+}
+
+const getAuth = () => {
+  const token = localStorage.getItem('token')
+  const user = localStorage.getItem('user')
+  if (token && user) return { token, user: JSON.parse(user) }
+  return null
+}
+
+const clearAuth = () => {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+}
+
+// ─── App ───────────────────────────────────────────────────
 function App() {
-  const [authState, setAuthState] = useState(null)
-  
-  const handleLogin = (authData) => {
-    setAuthState(authData)
+  const [authState, setAuthState] = useState(getAuth)
+
+  const handleLogin = (data) => {
+    saveAuth(data)
+    setAuthState({ token: data.token, user: data })
   }
 
   const handleLogout = () => {
+    clearAuth()
     setAuthState(null)
   }
 
   return (
     <>
       {!authState ? (
-        <Login onLogin={handleLogin} />
+        <AuthPage onLogin={handleLogin} />
       ) : (
         <DashboardShell authState={authState} onLogout={handleLogout} />
       )}
@@ -23,119 +52,136 @@ function App() {
   )
 }
 
-function Login({ onLogin }) {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [role, setRole] = useState('student')
-  const [simulatedResponse, setSimulatedResponse] = useState(null)
+// ─── Auth Page (Login + Register) ──────────────────────────
+function AuthPage({ onLogin }) {
+  const [isLogin, setIsLogin] = useState(true)
+  const [form, setForm] = useState({
+    name: '', email: '', password: '',
+    role: 'student', cgpa: '', branch: '', year: ''
+  })
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.id]: e.target.value })
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    
-    // Simulate API call and response
-    const response = {
-      token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-      role: role,
-      user: {
-        email: email || "user@example.com",
-        name: role === 'student' ? "John Doe" : "Admin User"
-      }
+    setError('')
+    setLoading(true)
+    try {
+      const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register'
+      const payload = isLogin
+        ? { email: form.email, password: form.password }
+        : { ...form, cgpa: parseFloat(form.cgpa), year: parseInt(form.year) }
+
+      const { data } = await api.post(endpoint, payload)
+      onLogin(data)
+    } catch (err) {
+      setError(err.response?.data?.message || 'Something went wrong')
+    } finally {
+      setLoading(false)
     }
-    
-    setSimulatedResponse(response)
-    
-    // Simulate delay before actual login completes
-    setTimeout(() => {
-      onLogin(response)
-    }, 1500)
   }
 
   return (
     <div className="login-container">
       <div className="login-box">
         <h2 className="login-title">CAMPUS PLACEMENT TRACKER</h2>
+
+        {error && (
+          <div style={{ background: '#fee', color: '#c00', padding: '0.8rem',
+            borderRadius: '6px', marginBottom: '1rem', fontSize: '0.9rem' }}>
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
+          {!isLogin && (
+            <div className="form-group">
+              <label htmlFor="name">Full Name</label>
+              <input id="name" type="text" value={form.name}
+                onChange={handleChange} placeholder="Your full name" required />
+            </div>
+          )}
+
           <div className="form-group">
             <label htmlFor="email">Email</label>
-            <input 
-              type="email" 
-              id="email" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email" 
-              required 
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input 
-              type="password" 
-              id="password" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password" 
-              required 
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="role">Role: {role.charAt(0).toUpperCase() + role.slice(1)}</label>
-            <select id="role" value={role} onChange={(e) => setRole(e.target.value)}>
-              <option value="student">Student</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
-          
-          <div className="auth-links">
-            <a href="#forgot">Forgot Password?</a>
+            <input id="email" type="email" value={form.email}
+              onChange={handleChange} placeholder="Enter your email" required />
           </div>
 
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <input id="password" type="password" value={form.password}
+              onChange={handleChange} placeholder="Enter your password" required />
+          </div>
+
+          {!isLogin && (
+            <>
+              <div className="form-group">
+                <label htmlFor="role">Role</label>
+                <select id="role" value={form.role} onChange={handleChange}>
+                  <option value="student">Student</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label htmlFor="branch">Branch</label>
+                <input id="branch" type="text" value={form.branch}
+                  onChange={handleChange} placeholder="e.g. Computer Science" />
+              </div>
+              <div className="form-group">
+                <label htmlFor="cgpa">CGPA</label>
+                <input id="cgpa" type="number" step="0.1" min="0" max="10"
+                  value={form.cgpa} onChange={handleChange} placeholder="e.g. 8.5" />
+              </div>
+              <div className="form-group">
+                <label htmlFor="year">Year</label>
+                <select id="year" value={form.year} onChange={handleChange}>
+                  <option value="">Select year</option>
+                  <option value="1">1st Year</option>
+                  <option value="2">2nd Year</option>
+                  <option value="3">3rd Year</option>
+                  <option value="4">4th Year</option>
+                </select>
+              </div>
+            </>
+          )}
+
           <div className="login-buttons">
-            <button type="submit" className="btn-primary">Login</button>
-            <button type="button" className="btn-secondary">Register</button>
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? 'Please wait...' : isLogin ? 'Login' : 'Register'}
+            </button>
+            <button type="button" className="btn-secondary"
+              onClick={() => { setIsLogin(!isLogin); setError('') }}>
+              {isLogin ? 'Register instead' : 'Login instead'}
+            </button>
           </div>
         </form>
       </div>
-
-      {simulatedResponse && (
-        <div className="debug-response">
-          <p>Simulating backend response...</p>
-          <pre>{JSON.stringify(simulatedResponse, null, 2)}</pre>
-        </div>
-      )}
     </div>
   )
 }
 
+// ─── Dashboard Shell ────────────────────────────────────────
 function DashboardShell({ authState, onLogout }) {
   const [currentView, setCurrentView] = useState('Dashboard')
-  const [drives, setDrives] = useState([
-    { id: 1, title: 'TechCorp Software Engineer', status: 'Registration Open', package: '12 LPA', eligibility: '7.5' },
-    { id: 2, title: 'DataSys Data Analyst', status: 'Closed', package: '8 LPA', eligibility: '7.0' }
-  ])
-  const [companies, setCompanies] = useState([
-    { id: 1, name: 'TechCorp', industry: 'Software' },
-    { id: 2, name: 'DataSys', industry: 'Data Analytics' }
-  ])
-  
-  const studentNavItems = ['Dashboard', 'Drives', 'Applications']
-  const adminNavItems = ['Dashboard', 'Companies', 'Drives', 'Applications', 'Interviews']
-  
-  const navItems = authState.role === 'admin' ? adminNavItems : studentNavItems
+  const user = authState.user
+
+  const studentNav = ['Dashboard', 'Drives', 'Applications']
+  const adminNav = ['Dashboard', 'Companies', 'Drives', 'Applications', 'Interviews']
+  const navItems = user.role === 'admin' ? adminNav : studentNav
 
   const renderContent = () => {
     switch (currentView) {
-      case 'Dashboard':
-        return <Dashboard role={authState.role} name={authState.user.name} />
-      case 'Drives':
-        return <Drives role={authState.role} drives={drives} setDrives={setDrives} />
-      case 'Applications':
-        return <Applications role={authState.role} />
-      case 'Companies':
-        return <Companies companies={companies} setCompanies={setCompanies} />
-      case 'Interviews':
-        return <Interviews />
-      default:
-        return <Dashboard role={authState.role} name={authState.user.name} />
+      case 'Dashboard':    return <Dashboard user={user} />
+      case 'Drives':       return <Drives user={user} />
+      case 'Applications': return <Applications user={user} />
+      case 'Companies':    return <Companies />
+      case 'Interviews':   return <Interviews />
+      default:             return <Dashboard user={user} />
     }
   }
 
@@ -144,24 +190,25 @@ function DashboardShell({ authState, onLogout }) {
       <nav className="navbar">
         <div className="navbar-brand">CAMPUS PLACEMENT TRACKER</div>
         <div className="navbar-user">
-          <span>Welcome, {authState.user.name}</span>
-          <button onClick={onLogout} style={{ padding: '0.4em 0.8em', fontSize: '0.9em' }}>Logout</button>
+          <span>Welcome, {user.name}</span>
+          <button onClick={onLogout}
+            style={{ padding: '0.4em 0.8em', fontSize: '0.9em' }}>
+            Logout
+          </button>
         </div>
       </nav>
-      
+
       <div className="sidebar-content-wrapper">
         <aside className="sidebar">
           {navItems.map(item => (
-            <div 
-              key={item} 
+            <div key={item}
               className={`nav-item ${currentView === item ? 'active' : ''}`}
-              onClick={() => setCurrentView(item)}
-            >
+              onClick={() => setCurrentView(item)}>
               {item}
             </div>
           ))}
         </aside>
-        
+
         <main className="main-content">
           <div className="page-header">
             <h1 className="page-title">{currentView}</h1>
@@ -173,46 +220,61 @@ function DashboardShell({ authState, onLogout }) {
   )
 }
 
-// Sub-components for views
-function Dashboard({ role, name }) {
+// ─── Dashboard ──────────────────────────────────────────────
+function Dashboard({ user }) {
+  const [stats, setStats] = useState(null)
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        if (user.role === 'student') {
+          const { data } = await api.get('/api/applications/my')
+          setStats({
+            total: data.length,
+            shortlisted: data.filter(a => a.status === 'shortlisted').length,
+            offered: data.filter(a => a.status === 'offered').length,
+            rejected: data.filter(a => a.status === 'rejected').length,
+          })
+        } else {
+          const [apps, drives, companies] = await Promise.all([
+            api.get('/api/applications'),
+            api.get('/api/drives'),
+            api.get('/api/companies'),
+          ])
+          setStats({
+            applications: apps.data.length,
+            drives: drives.data.length,
+            companies: companies.data.length,
+            offers: apps.data.filter(a => a.status === 'offered').length,
+          })
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    fetchStats()
+  }, [user.role])
+
   return (
     <div>
       <div className="card">
-        <h2>Welcome back, {name}!</h2>
+        <h2>Welcome back, {user.name}!</h2>
         <p>Here is an overview of your campus placement progress.</p>
       </div>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '2rem' }}>
-        {role === 'student' ? (
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2rem', marginTop: '1.5rem' }}>
+        {user.role === 'student' ? (
           <>
-            <div className="stat-card">
-              <h3>Applications</h3>
-              <div className="stat-value">3</div>
-              <p>You have applied to 3 drives.</p>
-            </div>
-            <div className="stat-card" style={{ background: 'linear-gradient(135deg, var(--color-chamois), var(--color-coffee))' }}>
-              <h3>Shortlisted</h3>
-              <div className="stat-value">1</div>
-              <p>Active interview processes.</p>
-            </div>
+            <StatCard title="Total Applied" value={stats?.total ?? '...'} note="Drives applied to" />
+            <StatCard title="Shortlisted" value={stats?.shortlisted ?? '...'} note="Active processes" color="chamois" />
+            <StatCard title="Offers" value={stats?.offered ?? '...'} note="Offers received" color="bistre" />
           </>
         ) : (
           <>
-            <div className="stat-card">
-              <h3>Upcoming Drives</h3>
-              <div className="stat-value">15</div>
-              <p>There are 15 upcoming drives.</p>
-            </div>
-            <div className="stat-card" style={{ background: 'linear-gradient(135deg, var(--color-chamois), var(--color-coffee))' }}>
-              <h3>Total Students</h3>
-              <div className="stat-value">450</div>
-              <p>Registered for placements.</p>
-            </div>
-            <div className="stat-card" style={{ background: 'linear-gradient(135deg, var(--color-bistre), var(--color-chamois))' }}>
-              <h3>Active Companies</h3>
-              <div className="stat-value">24</div>
-              <p>Currently hiring.</p>
-            </div>
+            <StatCard title="Total Drives" value={stats?.drives ?? '...'} note="Placement drives" />
+            <StatCard title="Companies" value={stats?.companies ?? '...'} note="Partner companies" color="chamois" />
+            <StatCard title="Applications" value={stats?.applications ?? '...'} note="Total applications" color="bistre" />
+            <StatCard title="Offers Made" value={stats?.offers ?? '...'} note="Students with offers" />
           </>
         )}
       </div>
@@ -220,107 +282,105 @@ function Dashboard({ role, name }) {
   )
 }
 
-function Drives({ role, drives, setDrives }) {
-  const [showForm, setShowForm] = useState(false)
-  const [newDrive, setNewDrive] = useState({ title: '', status: 'Registration Open', package: '', eligibility: '' })
-
-  const handleAdd = (e) => {
-    e.preventDefault()
-    if (newDrive.title) {
-      setDrives([...drives, { id: Date.now(), ...newDrive }])
-      setShowForm(false)
-      setNewDrive({ title: '', status: 'Registration Open', package: '', eligibility: '' })
-    }
-  }
-
+function StatCard({ title, value, note, color }) {
+  const bg = color === 'chamois'
+    ? 'linear-gradient(135deg, var(--color-chamois), var(--color-coffee))'
+    : color === 'bistre'
+    ? 'linear-gradient(135deg, var(--color-bistre), var(--color-chamois))'
+    : undefined
   return (
-    <div className="card">
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <h2>Placement Drives List</h2>
-        {role === 'admin' && <button onClick={() => setShowForm(!showForm)}>{showForm ? 'Cancel' : '+ Add New Drive'}</button>}
-      </div>
-
-      {showForm && (
-        <form onSubmit={handleAdd} style={{ padding: '1.5rem', border: '1px solid var(--color-chamois)', borderRadius: '8px', marginBottom: '1.5rem', background: '#faf8f5' }}>
-          <h3 style={{ marginTop: 0 }}>Add New Drive</h3>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-            <input placeholder="Job Title (e.g. Acme SWE)" value={newDrive.title} onChange={e => setNewDrive({...newDrive, title: e.target.value})} style={{ flex: 1, minWidth: '200px' }} required />
-            <input placeholder="Package (e.g. 10 LPA)" value={newDrive.package} onChange={e => setNewDrive({...newDrive, package: e.target.value})} style={{ flex: 1, minWidth: '150px' }} required />
-            <input placeholder="Eligibility CGPA (e.g. 7.0)" value={newDrive.eligibility} onChange={e => setNewDrive({...newDrive, eligibility: e.target.value})} style={{ flex: 1, minWidth: '150px' }} required />
-          </div>
-          <button type="submit" style={{ background: 'var(--color-bistre)' }}>Submit Drive</button>
-        </form>
-      )}
-      
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {drives.map(drive => (
-          <div key={drive.id} style={{ padding: '1.5rem', border: '1px solid var(--color-khaki)', borderRadius: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <h3 style={{ margin: 0, color: 'var(--color-bistre)' }}>{drive.title}</h3>
-              <span style={{ 
-                background: drive.status === 'Registration Open' ? 'var(--color-chamois)' : 'var(--color-khaki)', 
-                color: drive.status === 'Registration Open' ? 'white' : 'var(--color-bistre)', 
-                padding: '0.2rem 0.5rem', 
-                borderRadius: '4px', 
-                fontSize: '0.8rem' 
-              }}>
-                {drive.status}
-              </span>
-            </div>
-            <p style={{ marginTop: '0.5rem', color: 'var(--color-coffee)' }}>Package: {drive.package} | Eligibility CGPA: {drive.eligibility}</p>
-            {role === 'student' && drive.status === 'Registration Open' && <button style={{ marginTop: '1rem' }}>Apply Now</button>}
-          </div>
-        ))}
-      </div>
+    <div className="stat-card" style={{ background: bg }}>
+      <h3>{title}</h3>
+      <div className="stat-value">{value}</div>
+      <p>{note}</p>
     </div>
   )
 }
 
-function Applications({ role }) {
-  return (
-    <div className="card">
-      <h2>{role === 'admin' ? 'Student Applications' : 'My Applications'}</h2>
-      <p style={{ marginTop: '1rem' }}>List of applications will be displayed here.</p>
-    </div>
-  )
-}
-
-function Companies({ companies, setCompanies }) {
+// ─── Companies (Admin) ──────────────────────────────────────
+function Companies() {
+  const [companies, setCompanies] = useState([])
   const [showForm, setShowForm] = useState(false)
-  const [newComp, setNewComp] = useState({ name: '', industry: '' })
+  const [form, setForm] = useState({ name: '', industry: '', website: '', description: '' })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  const handleAdd = (e) => {
+  useEffect(() => {
+    api.get('/api/companies')
+      .then(({ data }) => setCompanies(data))
+      .catch(() => setError('Failed to load companies'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const handleAdd = async (e) => {
     e.preventDefault()
-    if (newComp.name) {
-      setCompanies([...companies, { id: Date.now(), ...newComp }])
+    try {
+      const { data } = await api.post('/api/companies', form)
+      setCompanies([...companies, data])
       setShowForm(false)
-      setNewComp({ name: '', industry: '' })
+      setForm({ name: '', industry: '', website: '', description: '' })
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to add company')
     }
   }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this company?')) return
+    try {
+      await api.delete(`/api/companies/${id}`)
+      setCompanies(companies.filter(c => c._id !== id))
+    } catch {
+      setError('Failed to delete company')
+    }
+  }
+
+  if (loading) return <div className="card"><p>Loading...</p></div>
 
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h2>Partner Companies</h2>
-        <button onClick={() => setShowForm(!showForm)}>{showForm ? 'Cancel' : '+ Add Company'}</button>
+        <button onClick={() => setShowForm(!showForm)}>
+          {showForm ? 'Cancel' : '+ Add Company'}
+        </button>
       </div>
-      
+
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+
       {showForm && (
         <form onSubmit={handleAdd} style={{ padding: '1.5rem', border: '1px solid var(--color-chamois)', borderRadius: '8px', marginBottom: '1.5rem', background: '#faf8f5' }}>
           <h3 style={{ marginTop: 0 }}>Add New Company</h3>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-            <input placeholder="Company Name" value={newComp.name} onChange={e => setNewComp({...newComp, name: e.target.value})} style={{ flex: 1, minWidth: '200px' }} required />
-            <input placeholder="Industry (e.g. Finance)" value={newComp.industry} onChange={e => setNewComp({...newComp, industry: e.target.value})} style={{ flex: 1, minWidth: '200px' }} required />
+            <input placeholder="Company Name" value={form.name}
+              onChange={e => setForm({ ...form, name: e.target.value })}
+              style={{ flex: 1, minWidth: '200px' }} required />
+            <input placeholder="Industry" value={form.industry}
+              onChange={e => setForm({ ...form, industry: e.target.value })}
+              style={{ flex: 1, minWidth: '200px' }} required />
+            <input placeholder="Website URL" value={form.website}
+              onChange={e => setForm({ ...form, website: e.target.value })}
+              style={{ flex: 1, minWidth: '200px' }} />
+            <input placeholder="Description" value={form.description}
+              onChange={e => setForm({ ...form, description: e.target.value })}
+              style={{ flex: 1, minWidth: '200px' }} />
           </div>
-          <button type="submit" style={{ background: 'var(--color-bistre)' }}>Submit Company</button>
+          <button type="submit" style={{ background: 'var(--color-bistre)' }}>
+            Submit Company
+          </button>
         </form>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {companies.map(company => (
-          <div key={company.id} style={{ padding: '1.2rem', border: '1px solid var(--color-khaki)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontWeight: 'bold', color: 'var(--color-bistre)' }}>{company.name}</span>
-            <span style={{ color: 'var(--color-coffee)' }}>{company.industry}</span>
+          <div key={company._id} style={{ padding: '1.2rem', border: '1px solid var(--color-khaki)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <span style={{ fontWeight: 'bold', color: 'var(--color-bistre)' }}>{company.name}</span>
+              <span style={{ color: 'var(--color-coffee)', marginLeft: '1rem' }}>{company.industry}</span>
+            </div>
+            <button onClick={() => handleDelete(company._id)}
+              style={{ background: '#c00', fontSize: '0.8rem', padding: '0.3rem 0.7rem' }}>
+              Delete
+            </button>
           </div>
         ))}
       </div>
@@ -328,11 +388,382 @@ function Companies({ companies, setCompanies }) {
   )
 }
 
+// ─── Drives ─────────────────────────────────────────────────
+function Drives({ user }) {
+  const [drives, setDrives] = useState([])
+  const [companies, setCompanies] = useState([])
+  const [showForm, setShowForm] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [applyingId, setApplyingId] = useState(null)
+  const [form, setForm] = useState({
+    company: '', role: '', package: '',
+    eligibilityCGPA: '', branches: '', date: '', venue: '', description: ''
+  })
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [drivesRes, companiesRes] = await Promise.all([
+          api.get('/api/drives'),
+          api.get('/api/companies')
+        ])
+        setDrives(drivesRes.data)
+        setCompanies(companiesRes.data)
+      } catch {
+        setError('Failed to load drives')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
+
+  const handleAdd = async (e) => {
+    e.preventDefault()
+    try {
+      const payload = {
+        ...form,
+        package: parseFloat(form.package),
+        eligibilityCGPA: parseFloat(form.eligibilityCGPA),
+        branches: form.branches.split(',').map(b => b.trim())
+      }
+      const { data } = await api.post('/api/drives', payload)
+      setDrives([...drives, data])
+      setShowForm(false)
+      setForm({ company: '', role: '', package: '', eligibilityCGPA: '', branches: '', date: '', venue: '', description: '' })
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to add drive')
+    }
+  }
+
+  const handleApply = async (driveId) => {
+    setApplyingId(driveId)
+    try {
+      await api.post('/api/applications', { driveId })
+      alert('Applied successfully!')
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to apply')
+    } finally {
+      setApplyingId(null)
+    }
+  }
+
+  if (loading) return <div className="card"><p>Loading...</p></div>
+
+  return (
+    <div className="card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <h2>Placement Drives</h2>
+        {user.role === 'admin' && (
+          <button onClick={() => setShowForm(!showForm)}>
+            {showForm ? 'Cancel' : '+ Add New Drive'}
+          </button>
+        )}
+      </div>
+
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+
+      {showForm && (
+        <form onSubmit={handleAdd} style={{ padding: '1.5rem', border: '1px solid var(--color-chamois)', borderRadius: '8px', marginBottom: '1.5rem', background: '#faf8f5' }}>
+          <h3 style={{ marginTop: 0 }}>Add New Drive</h3>
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+            <select value={form.company} onChange={e => setForm({ ...form, company: e.target.value })}
+              style={{ flex: 1, minWidth: '200px' }} required>
+              <option value="">Select Company</option>
+              {companies.map(c => (
+                <option key={c._id} value={c._id}>{c.name}</option>
+              ))}
+            </select>
+            <input placeholder="Job Role (e.g. Software Engineer)" value={form.role}
+              onChange={e => setForm({ ...form, role: e.target.value })}
+              style={{ flex: 1, minWidth: '200px' }} required />
+            <input placeholder="Package (LPA)" type="number" value={form.package}
+              onChange={e => setForm({ ...form, package: e.target.value })}
+              style={{ flex: 1, minWidth: '150px' }} required />
+            <input placeholder="Min CGPA" type="number" step="0.1" value={form.eligibilityCGPA}
+              onChange={e => setForm({ ...form, eligibilityCGPA: e.target.value })}
+              style={{ flex: 1, minWidth: '150px' }} required />
+            <input placeholder="Branches (comma separated)" value={form.branches}
+              onChange={e => setForm({ ...form, branches: e.target.value })}
+              style={{ flex: 1, minWidth: '200px' }} />
+            <input type="date" value={form.date}
+              onChange={e => setForm({ ...form, date: e.target.value })}
+              style={{ flex: 1, minWidth: '150px' }} required />
+            <input placeholder="Venue" value={form.venue}
+              onChange={e => setForm({ ...form, venue: e.target.value })}
+              style={{ flex: 1, minWidth: '200px' }} />
+            <input placeholder="Description" value={form.description}
+              onChange={e => setForm({ ...form, description: e.target.value })}
+              style={{ flex: 1, minWidth: '200px' }} />
+          </div>
+          <button type="submit" style={{ background: 'var(--color-bistre)' }}>
+            Submit Drive
+          </button>
+        </form>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {drives.map(drive => (
+          <div key={drive._id} style={{ padding: '1.5rem', border: '1px solid var(--color-khaki)', borderRadius: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <h3 style={{ margin: 0, color: 'var(--color-bistre)' }}>
+                {drive.company?.name} — {drive.role}
+              </h3>
+              <span style={{
+                background: drive.status === 'upcoming' ? 'var(--color-chamois)' : 'var(--color-khaki)',
+                color: drive.status === 'upcoming' ? 'white' : 'var(--color-bistre)',
+                padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.8rem', textTransform: 'capitalize'
+              }}>
+                {drive.status}
+              </span>
+            </div>
+            <p style={{ marginTop: '0.5rem', color: 'var(--color-coffee)' }}>
+              Package: {drive.package} LPA &nbsp;|&nbsp;
+              Min CGPA: {drive.eligibilityCGPA} &nbsp;|&nbsp;
+              Date: {new Date(drive.date).toLocaleDateString()}
+            </p>
+            {drive.branches?.length > 0 && (
+              <p style={{ fontSize: '0.85rem', color: 'var(--color-coffee)' }}>
+                Branches: {drive.branches.join(', ')}
+              </p>
+            )}
+            {user.role === 'student' && drive.status === 'upcoming' && (
+              <button
+                style={{ marginTop: '1rem' }}
+                disabled={applyingId === drive._id}
+                onClick={() => handleApply(drive._id)}>
+                {applyingId === drive._id ? 'Applying...' : 'Apply Now'}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Applications ───────────────────────────────────────────
+function Applications({ user }) {
+  const [applications, setApplications] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const endpoint = user.role === 'admin' ? '/api/applications' : '/api/applications/my'
+    api.get(endpoint)
+      .then(({ data }) => setApplications(data))
+      .catch(() => setError('Failed to load applications'))
+      .finally(() => setLoading(false))
+  }, [user.role])
+
+  const handleStatusUpdate = async (id, status) => {
+    try {
+      const { data } = await api.put(`/api/applications/${id}`, { status })
+      setApplications(applications.map(a => a._id === id ? data : a))
+    } catch {
+      alert('Failed to update status')
+    }
+  }
+
+  const statusColor = (status) => {
+    const colors = {
+      applied: '#3b82f6',
+      shortlisted: '#f59e0b',
+      interviewed: '#8b5cf6',
+      offered: '#10b981',
+      rejected: '#ef4444'
+    }
+    return colors[status] || '#888'
+  }
+
+  if (loading) return <div className="card"><p>Loading...</p></div>
+
+  return (
+    <div className="card">
+      <h2>{user.role === 'admin' ? 'All Student Applications' : 'My Applications'}</h2>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+        {applications.length === 0 && <p>No applications found.</p>}
+        {applications.map(app => (
+          <div key={app._id} style={{ padding: '1.5rem', border: '1px solid var(--color-khaki)', borderRadius: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <h3 style={{ margin: 0, color: 'var(--color-bistre)' }}>
+                  {app.drive?.company?.name} — {app.drive?.role}
+                </h3>
+                {user.role === 'admin' && (
+                  <p style={{ margin: '0.3rem 0', fontSize: '0.9rem', color: 'var(--color-coffee)' }}>
+                    Student: {app.student?.name} ({app.student?.email})
+                    &nbsp;| CGPA: {app.student?.cgpa}
+                  </p>
+                )}
+                <p style={{ margin: '0.3rem 0', fontSize: '0.85rem', color: 'var(--color-coffee)' }}>
+                  Package: {app.drive?.package} LPA &nbsp;|&nbsp;
+                  Applied: {new Date(app.appliedDate).toLocaleDateString()}
+                </p>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end' }}>
+                <span style={{
+                  background: statusColor(app.status),
+                  color: 'white', padding: '0.3rem 0.8rem',
+                  borderRadius: '20px', fontSize: '0.8rem', textTransform: 'capitalize'
+                }}>
+                  {app.status}
+                </span>
+                {user.role === 'admin' && (
+                  <select
+                    value={app.status}
+                    onChange={e => handleStatusUpdate(app._id, e.target.value)}
+                    style={{ fontSize: '0.85rem', padding: '0.3rem' }}>
+                    <option value="applied">Applied</option>
+                    <option value="shortlisted">Shortlisted</option>
+                    <option value="interviewed">Interviewed</option>
+                    <option value="offered">Offered</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Interviews (Admin) ─────────────────────────────────────
 function Interviews() {
+  const [applications, setApplications] = useState([])
+  const [rounds, setRounds] = useState({})
+  const [showForm, setShowForm] = useState(null)
+  const [form, setForm] = useState({ roundName: '', date: '', notes: '' })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/api/applications')
+      .then(({ data }) => setApplications(
+        data.filter(a => ['shortlisted', 'interviewed'].includes(a.status))
+      ))
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
+
+  const loadRounds = async (applicationId) => {
+    try {
+      const { data } = await api.get(`/api/interviews/${applicationId}`)
+      setRounds(prev => ({ ...prev, [applicationId]: data }))
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleAddRound = async (e, applicationId) => {
+    e.preventDefault()
+    try {
+      await api.post('/api/interviews', { applicationId, ...form })
+      setForm({ roundName: '', date: '', notes: '' })
+      setShowForm(null)
+      loadRounds(applicationId)
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to add round')
+    }
+  }
+
+  const handleUpdateResult = async (roundId, result, applicationId) => {
+    try {
+      await api.put(`/api/interviews/${roundId}`, { result })
+      loadRounds(applicationId)
+    } catch {
+      alert('Failed to update result')
+    }
+  }
+
+  if (loading) return <div className="card"><p>Loading...</p></div>
+
   return (
     <div className="card">
       <h2>Interview Schedules</h2>
-      <p style={{ marginTop: '1rem' }}>Manage and track all ongoing interviews for active placement drives.</p>
+      <p style={{ color: 'var(--color-coffee)', marginBottom: '1.5rem' }}>
+        Showing shortlisted and interviewed applications
+      </p>
+
+      {applications.length === 0 && <p>No active interviews found.</p>}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {applications.map(app => (
+          <div key={app._id} style={{ border: '1px solid var(--color-khaki)', borderRadius: '8px', overflow: 'hidden' }}>
+            <div style={{ padding: '1rem', background: '#faf8f5', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <strong style={{ color: 'var(--color-bistre)' }}>
+                  {app.student?.name} → {app.drive?.company?.name} ({app.drive?.role})
+                </strong>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-coffee)' }}>
+                  CGPA: {app.student?.cgpa} | Status: {app.status}
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button style={{ fontSize: '0.85rem' }}
+                  onClick={() => {
+                    loadRounds(app._id)
+                    setShowForm(showForm === app._id ? null : app._id)
+                  }}>
+                  {showForm === app._id ? 'Close' : '+ Add Round'}
+                </button>
+              </div>
+            </div>
+
+            {showForm === app._id && (
+              <form onSubmit={e => handleAddRound(e, app._id)}
+                style={{ padding: '1rem', borderTop: '1px solid var(--color-khaki)', background: '#fff' }}>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.8rem' }}>
+                  <input placeholder="Round name (e.g. Technical Round 1)"
+                    value={form.roundName}
+                    onChange={e => setForm({ ...form, roundName: e.target.value })}
+                    style={{ flex: 1, minWidth: '200px' }} required />
+                  <input type="date" value={form.date}
+                    onChange={e => setForm({ ...form, date: e.target.value })}
+                    style={{ flex: 1, minWidth: '150px' }} />
+                  <input placeholder="Notes"
+                    value={form.notes}
+                    onChange={e => setForm({ ...form, notes: e.target.value })}
+                    style={{ flex: 1, minWidth: '200px' }} />
+                </div>
+                <button type="submit" style={{ background: 'var(--color-bistre)', fontSize: '0.85rem' }}>
+                  Add Round
+                </button>
+              </form>
+            )}
+
+            {rounds[app._id] && (
+              <div style={{ padding: '1rem', borderTop: '1px solid var(--color-khaki)' }}>
+                {rounds[app._id].length === 0 && (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--color-coffee)' }}>No rounds added yet.</p>
+                )}
+                {rounds[app._id].map(round => (
+                  <div key={round._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #eee', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div>
+                      <strong style={{ fontSize: '0.9rem' }}>{round.roundName}</strong>
+                      {round.date && <span style={{ fontSize: '0.8rem', color: 'var(--color-coffee)', marginLeft: '0.5rem' }}>
+                        {new Date(round.date).toLocaleDateString()}
+                      </span>}
+                      {round.notes && <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-coffee)' }}>{round.notes}</p>}
+                    </div>
+                    <select value={round.result}
+                      onChange={e => handleUpdateResult(round._id, e.target.value, app._id)}
+                      style={{ fontSize: '0.8rem', padding: '0.2rem' }}>
+                      <option value="pending">Pending</option>
+                      <option value="cleared">Cleared</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
