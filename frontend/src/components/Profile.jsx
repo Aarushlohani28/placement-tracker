@@ -3,8 +3,10 @@ import api from '../api'
 
 export default function Profile({ user, onUpdateUser, onLogout }) {
   const [file, setFile] = useState(null)
+  const [resumeFile, setResumeFile] = useState(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [resumeMessage, setResumeMessage] = useState('')
   
   // Edit mode states
   const [isEditing, setIsEditing] = useState(false)
@@ -13,7 +15,8 @@ export default function Profile({ user, onUpdateUser, onLogout }) {
     designation: user.designation || '',
     branch: user.branch || '',
     cgpa: user.cgpa || '',
-    year: user.year || ''
+    year: user.year || '',
+    bio: user.bio || ''
   })
   
   // Deletion state
@@ -38,6 +41,29 @@ export default function Profile({ user, onUpdateUser, onLogout }) {
       setFile(null)
     } catch (err) {
       setMessage(err.response?.data?.message || 'Failed to upload picture')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResumeUpload = async (e) => {
+    e.preventDefault()
+    if (!resumeFile) return
+
+    setLoading(true)
+    setResumeMessage('')
+    const formData = new FormData()
+    formData.append('resume', resumeFile)
+
+    try {
+      const { data } = await api.put(`/api/users/${user._id}/resume`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      onUpdateUser({ ...user, resumeURL: data.resumeURL })
+      setResumeMessage('Resume uploaded successfully!')
+      setResumeFile(null)
+    } catch (err) {
+      setResumeMessage(err.response?.data?.message || 'Failed to upload resume')
     } finally {
       setLoading(false)
     }
@@ -112,6 +138,24 @@ export default function Profile({ user, onUpdateUser, onLogout }) {
               </button>
             </div>
           </form>
+
+          {user.role === 'student' && (
+            <form onSubmit={handleResumeUpload} style={{ marginTop: '1rem', background: '#faf8f5', padding: '1rem', border: '1px solid var(--color-khaki)', borderRadius: '8px', width: '100%' }}>
+              <h4 style={{ margin: '0 0 0.5rem 0', textAlign: 'center' }}>Professional Resume</h4>
+              {user.resumeURL && (
+                <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+                  <a href={`http://localhost:5000${user.resumeURL}`} target="_blank" rel="noreferrer" style={{ fontSize: '0.85rem', color: '#0066cc', textDecoration: 'underline' }}>View Current Resume</a>
+                </div>
+              )}
+              {resumeMessage && <p style={{ color: resumeMessage.includes('success') ? 'green' : 'red', fontSize: '0.8rem', textAlign: 'center' }}>{resumeMessage}</p>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <input type="file" accept="application/pdf" onChange={(e) => setResumeFile(e.target.files[0])} style={{ padding: '0.4rem', fontSize: '0.8rem' }} />
+                <button type="submit" disabled={!resumeFile || loading} style={{ padding: '0.4rem' }}>
+                  {loading && resumeFile ? 'Uploading...' : 'Upload PDF'}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
 
         {/* Right Column: Details & Edit */}
@@ -129,6 +173,11 @@ export default function Profile({ user, onUpdateUser, onLogout }) {
 
           {!isEditing ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', fontSize: '1.05rem' }}>
+              {user.bio && (
+                <div style={{ background: '#faf8f5', padding: '1rem', borderRadius: '8px', borderLeft: '4px solid var(--color-khaki)', fontStyle: 'italic', marginBottom: '1rem' }}>
+                  "{user.bio}"
+                </div>
+              )}
               <div><strong>Email:</strong> {user.email}</div>
               <div><strong>Role:</strong> <span style={{ textTransform: 'capitalize' }}>{user.role}</span></div>
               {user.role === 'admin' && <div><strong>Designation:</strong> {user.designation}</div>}
@@ -150,6 +199,25 @@ export default function Profile({ user, onUpdateUser, onLogout }) {
               <div>
                 <label>Name</label>
                 <input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} required />
+              </div>
+              <div>
+                <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>Short Bio</span>
+                  <span style={{ fontSize: '0.8rem', color: editForm.bio.length >= 200 ? 'red' : 'gray' }}>
+                    {editForm.bio.length}/200
+                  </span>
+                </label>
+                <textarea 
+                  value={editForm.bio} 
+                  onChange={e => {
+                    if (e.target.value.length <= 200) {
+                      setEditForm({...editForm, bio: e.target.value})
+                    }
+                  }} 
+                  rows="3"
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                  placeholder="Tell us a bit about yourself..."
+                />
               </div>
               {user.role === 'admin' && (
                 <div>

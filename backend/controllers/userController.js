@@ -40,13 +40,15 @@ const updateProfilePic = async (req, res) => {
 
 // @desc    Update user info
 // @route   PUT /api/users/:id
-const updateUser = async (req, res) => {
+  const updateUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
     if (!user) return res.status(404).json({ message: 'User not found' })
     if (req.user.id !== user._id.toString()) return res.status(403).json({ message: 'Not authorized' })
 
     user.name = req.body.name || user.name
+    if (req.body.bio !== undefined) user.bio = req.body.bio
+
     if (user.role === 'student') {
       user.branch = req.body.branch || user.branch
       user.cgpa = req.body.cgpa !== undefined ? req.body.cgpa : user.cgpa
@@ -65,7 +67,9 @@ const updateUser = async (req, res) => {
       branch: updatedUser.branch,
       year: updatedUser.year,
       designation: updatedUser.designation,
-      profilePic: updatedUser.profilePic
+      profilePic: updatedUser.profilePic,
+      bio: updatedUser.bio,
+      resumeURL: updatedUser.resumeURL
     })
   } catch (error) {
     res.status(500).json({ message: error.message })
@@ -107,4 +111,25 @@ const deleteUser = async (req, res) => {
   }
 }
 
-module.exports = { getUsers, updateProfilePic, updateUser, requestDelete, deleteUser }
+// @desc    Upload user resume (student)
+// @route   PUT /api/users/:id/resume
+const uploadResume = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+    if (!user) return res.status(404).json({ message: 'User not found' })
+    if (req.user.id !== user._id.toString()) return res.status(403).json({ message: 'Not authorized' })
+    if (user.role !== 'student') return res.status(400).json({ message: 'Only students can have resumes' })
+
+    if (req.file) {
+      user.resumeURL = `/uploads/resumes/${req.file.filename}`
+      await user.save()
+      res.json({ message: 'Resume uploaded', resumeURL: user.resumeURL })
+    } else {
+      res.status(400).json({ message: 'No document file provided' })
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message })
+  }
+}
+
+module.exports = { getUsers, updateProfilePic, updateUser, requestDelete, deleteUser, uploadResume }

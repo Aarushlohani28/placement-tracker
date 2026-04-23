@@ -47,6 +47,12 @@ const userSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  bio: {
+    type: String,
+    trim: true,
+    default: '',
+    maxlength: 200
+  },
   deletionRequested: {
     type: Boolean,
     default: false
