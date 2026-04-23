@@ -20,35 +20,39 @@ Currently, your project is utilizing a local/offline MongoDB script. For product
 
 ---
 
-## 2. Deploying the Backend (Render / Heroku)
+## 2. Deploying the Backend (Railway)
 
-Because our backend manages real-time `Socket.io` WebSockets and static File Uploads (`Multer`), it needs a dedicated, persisting Node server (unlike serverless functions). **Render** is excellent for this.
+Because our backend manages real-time `Socket.io` WebSockets, it needs a full, persistent Node.js server. **Railway** is the best free option — it supports WebSockets natively, never sleeps on inactivity, and deploys directly from GitHub with zero config changes.
 
-1. Sign up for [Render.com](https://render.com) and hook into your GitHub account natively.
-2. Select **New Web Service** and map onto your `placement-tracker` repository explicitly.
-3. Because the root repository holds both frontend/backend, you must override standard configurations:
+1. Sign up at [Railway.app](https://railway.app) using your GitHub account.
+2. Click **New Project → Deploy from GitHub repo** and select your `placement-tracker` repository.
+3. Railway will auto-detect the root. Because the backend lives in a subfolder, click **Settings** on the service and set:
    - **Root Directory:** `backend`
    - **Build Command:** `npm install`
    - **Start Command:** `node server.js`
-4. **Environment Variables**: Add your production keys exactly mapping your development values!
-   - `MONGO_URI`: *(Paste the Atlas URL you procured from Step 1)*
-   - `JWT_SECRET`: *(Generate a highly secure randomized long text string)*
+4. Go to the **Variables** tab and add your environment variables:
+   - `MONGO_URI`: *(Paste the Atlas URL from Step 1)*
+   - `JWT_SECRET`: *(Any long, random secret string)*
+   - `CLOUDINARY_CLOUD_NAME`: `dnlyszxne`
+   - `CLOUDINARY_API_KEY`: `935121451771272`
+   - `CLOUDINARY_API_SECRET`: *(your secret)*
    - `PORT`: `5000`
-5. **Deploy**: Hit Create. It may take 3-5 minutes, but it will eventually yield a live address.
+5. Click **Deploy**. Railway builds and launches the server in ~1 minute and provides a live URL like `https://placement-tracker-backend.up.railway.app`.
 
-## 2.5 Cloud Storage Integration (Cloudinary)
+> **TIP**
+> Railway gives $5 of free credit per month which comfortably covers a small Node.js backend. No credit card required to start.
 
-Because platforms like Render/Heroku natively wipe your local `public/uploads` directories whenever the server spins down or restarts (unless you pay for persistent disks), you **must** migrate your file infrastructure securely over to a dedicated cloud storage provider before deploying in production. We highly recommend using **Cloudinary**:
+## 2.5 Cloud Storage (Cloudinary — Already Integrated ✅)
 
-1. Create a free account at [Cloudinary](https://cloudinary.com/).
-2. Pull your standard Cloudinary configuration variables from your dashboard (`Cloud Name`, `API Key`, and `API Secret`).
-3. Add these identical variables directly into your Backend **Render Environment Variables** list alongside your Mongo URI:
-   - `CLOUDINARY_CLOUD_NAME`: `your-cloud-name`
-   - `CLOUDINARY_API_KEY`: `your-api-key`
-   - `CLOUDINARY_API_SECRET`: `your-secret`
-4. Update your backend code locally! Open a terminal in the backend folder and run `npm install cloudinary multer-storage-cloudinary`.
-5. Rewrite your `multer` configurations (found inside `userRoutes.js` and `messageRoutes.js`). Replace `multer.diskStorage` with the `CloudinaryStorage` adapter targeting different cloud folders (`folder: 'profiles'`, `'resumes'`, `'chats'`).
-6. Your router will subsequently start handing off absolute cloud URL strings (`https://res.cloudinary.com/...`) seamlessly natively persisting across all server wipes!
+Cloudinary is **already fully wired up** in this codebase. All profile photos, resumes, and chat images are stored in the cloud under the `dnlyszxne` account, organized into three folders:
+
+| Upload Type | Cloudinary Folder |
+|---|---|
+| Profile pictures | `placement-tracker/profiles` |
+| Student resumes | `placement-tracker/resumes` |
+| Chat images | `placement-tracker/chats` |
+
+The only thing you need to do before deploying is add the three `CLOUDINARY_*` environment variables in Railway's **Variables** tab (already listed in Step 2 above). No local disk storage is used — files persist permanently on Cloudinary regardless of server restarts.
 
 ---
 
