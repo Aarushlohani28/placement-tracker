@@ -166,7 +166,8 @@ input:focus, select:focus {
 .app-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .navbar {
@@ -199,15 +200,18 @@ input:focus, select:focus {
 .sidebar-content-wrapper {
   display: flex;
   flex: 1;
+  overflow: hidden;
 }
 
 .sidebar {
   background-color: var(--color-khaki);
-  min-width: 250px;
+  width: 260px;
+  min-width: 260px;
   padding: 2rem 0;
   border-right: 1px solid var(--color-chamois);
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .nav-item {
@@ -231,6 +235,7 @@ input:focus, select:focus {
   flex: 1;
   background-color: var(--color-beige);
   padding: 3rem;
+  overflow-y: auto;
 }
 
 .page-header {
@@ -276,6 +281,28 @@ input:focus, select:focus {
 .stat-card .stat-value {
   font-size: 3rem;
   font-weight: bold;
+}
+
+.chat-container {
+  display: flex;
+  height: 600px;
+  border: 1px solid var(--color-khaki);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.chat-sidebar {
+  width: 300px;
+  border-right: 1px solid var(--color-khaki);
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Responsive adjustments for mobile devices */
@@ -358,4 +385,36 @@ input:focus, select:focus {
   .stat-card .stat-value {
     font-size: 2.5rem;
   }
+
+  .chat-sidebar.active-chat {
+    display: none;
+  }
+  
+  .chat-sidebar:not(.active-chat) {
+    width: 100% !important;
+    border-right: none !important;
+  }
+  
+  .chat-main.active-chat {
+    display: flex !important;
+  }
+  
+  .chat-main:not(.active-chat) {
+    display: none !important;
+  }
+
+  .chat-back-btn {
+    display: block !important;
+  }
 }
+
+.chat-back-btn {
+  display: none;
+  padding: 0.3rem 0.6rem;
+  background-color: var(--color-khaki);
+  color: var(--color-bistre);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+

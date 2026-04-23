@@ -11,7 +11,9 @@ const saveAuth = (data) => {
     email: data.email,
     role: data.role,
     cgpa: data.cgpa,
-    branch: data.branch
+    branch: data.branch,
+    designation: data.designation,
+    profilePic: data.profilePic
   }))
 }
 
@@ -27,6 +29,11 @@ const clearAuth = () => {
   localStorage.removeItem('user')
 }
 
+import Profile from './components/Profile'
+import Directory from './components/Directory'
+import Chat from './components/Chat'
+import { socket } from './socket'
+
 // ─── App ───────────────────────────────────────────────────
 function App() {
   const [authState, setAuthState] = useState(getAuth)
@@ -34,6 +41,12 @@ function App() {
   const handleLogin = (data) => {
     saveAuth(data)
     setAuthState({ token: data.token, user: data })
+  }
+
+  const handleUpdateUser = (updatedUser) => {
+    const newData = { ...updatedUser, token: authState.token }
+    saveAuth(newData)
+    setAuthState({ token: authState.token, user: updatedUser })
   }
 
   const handleLogout = () => {
@@ -46,7 +59,7 @@ function App() {
       {!authState ? (
         <AuthPage onLogin={handleLogin} />
       ) : (
-        <DashboardShell authState={authState} onLogout={handleLogout} />
+        <DashboardShell authState={authState} onLogout={handleLogout} onUpdateUser={handleUpdateUser} />
       )}
     </>
   )
@@ -57,7 +70,7 @@ function AuthPage({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true)
   const [form, setForm] = useState({
     name: '', email: '', password: '',
-    role: 'student', cgpa: '', branch: '', year: ''
+    role: 'student', cgpa: '', branch: '', year: '', designation: ''
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -74,7 +87,9 @@ function AuthPage({ onLogin }) {
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register'
       const payload = isLogin
         ? { email: form.email, password: form.password }
-        : { ...form, cgpa: parseFloat(form.cgpa), year: parseInt(form.year) }
+        : form.role === 'admin'
+          ? { name: form.name, email: form.email, password: form.password, role: form.role, designation: form.designation }
+          : { ...form, cgpa: parseFloat(form.cgpa), year: parseInt(form.year) }
 
       const { data } = await api.post(endpoint, payload)
       onLogin(data)
@@ -127,26 +142,36 @@ function AuthPage({ onLogin }) {
                   <option value="admin">Admin</option>
                 </select>
               </div>
-              <div className="form-group">
-                <label htmlFor="branch">Branch</label>
-                <input id="branch" type="text" value={form.branch}
-                  onChange={handleChange} placeholder="e.g. Computer Science" />
-              </div>
-              <div className="form-group">
-                <label htmlFor="cgpa">CGPA</label>
-                <input id="cgpa" type="number" step="0.1" min="0" max="10"
-                  value={form.cgpa} onChange={handleChange} placeholder="e.g. 8.5" />
-              </div>
-              <div className="form-group">
-                <label htmlFor="year">Year</label>
-                <select id="year" value={form.year} onChange={handleChange}>
-                  <option value="">Select year</option>
-                  <option value="1">1st Year</option>
-                  <option value="2">2nd Year</option>
-                  <option value="3">3rd Year</option>
-                  <option value="4">4th Year</option>
-                </select>
-              </div>
+              {form.role === 'admin' ? (
+                <div className="form-group">
+                  <label htmlFor="designation">Designation</label>
+                  <input id="designation" type="text" value={form.designation}
+                    onChange={handleChange} placeholder="e.g. Placement Officer" required />
+                </div>
+              ) : (
+                <>
+                  <div className="form-group">
+                    <label htmlFor="branch">Branch</label>
+                    <input id="branch" type="text" value={form.branch}
+                      onChange={handleChange} placeholder="e.g. Computer Science" />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="cgpa">CGPA</label>
+                    <input id="cgpa" type="number" step="0.1" min="0" max="10"
+                      value={form.cgpa} onChange={handleChange} placeholder="e.g. 8.5" />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="year">Year</label>
+                    <select id="year" value={form.year} onChange={handleChange}>
+                      <option value="">Select year</option>
+                      <option value="1">1st Year</option>
+                      <option value="2">2nd Year</option>
+                      <option value="3">3rd Year</option>
+                      <option value="4">4th Year</option>
+                    </select>
+                  </div>
+                </>
+              )}
             </>
           )}
 
@@ -166,17 +191,71 @@ function AuthPage({ onLogin }) {
 }
 
 // ─── Dashboard Shell ────────────────────────────────────────
-function DashboardShell({ authState, onLogout }) {
+function DashboardShell({ authState, onLogout, onUpdateUser }) {
   const [currentView, setCurrentView] = useState('Dashboard')
+  const [chatTarget, setChatTarget] = useState(null)
+  
+  const [conversations, setConversations] = useState([])
+  const [totalUnread, setTotalUnread] = useState(0)
+
   const user = authState.user
 
-  const studentNav = ['Dashboard', 'Drives', 'Applications']
-  const adminNav = ['Dashboard', 'Companies', 'Drives', 'Applications', 'Interviews']
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        const { data } = await api.get('/api/messages/all/conversations')
+        setConversations(data)
+        const unread = data.reduce((sum, c) => sum + c.unreadCount, 0)
+        setTotalUnread(unread)
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    fetchConversations()
+
+    socket.connect()
+    socket.emit('join', user._id)
+
+    const handleReceive = (msg) => {
+      fetchConversations()
+    }
+
+    socket.on('receiveMessage', handleReceive)
+
+    return () => {
+      socket.off('receiveMessage')
+      socket.disconnect()
+    }
+  }, [user._id])
+
+  const refreshConversations = async () => {
+    try {
+      const { data } = await api.get('/api/messages/all/conversations')
+      setConversations(data)
+      const unread = data.reduce((sum, c) => sum + c.unreadCount, 0)
+      setTotalUnread(unread)
+    } catch (err) {}
+  }
+
+  const studentNav = ['Dashboard', 'Directory', 'Chat', 'Drives', 'Applications', 'My Profile']
+  const adminNav = ['Dashboard', 'Directory', 'Chat', 'Companies', 'Drives', 'Applications', 'Interviews', 'My Profile']
   const navItems = user.role === 'admin' ? adminNav : studentNav
+
+  const handleStartChat = (targetUser) => {
+    setChatTarget(targetUser)
+    setCurrentView('Chat')
+  }
+
+  const handleUserUpdate = (updatedUser) => {
+    onUpdateUser(updatedUser)
+  }
 
   const renderContent = () => {
     switch (currentView) {
       case 'Dashboard':    return <Dashboard user={user} />
+      case 'Directory':    return <Directory currentUser={user} onStartChat={handleStartChat} />
+      case 'Chat':         return <Chat currentUser={user} initialTargetUser={chatTarget} conversations={conversations} refreshConversations={refreshConversations} />
+      case 'My Profile':   return <Profile user={user} onUpdateUser={handleUserUpdate} onLogout={onLogout} />
       case 'Drives':       return <Drives user={user} />
       case 'Applications': return <Applications user={user} />
       case 'Companies':    return <Companies />
@@ -200,13 +279,25 @@ function DashboardShell({ authState, onLogout }) {
 
       <div className="sidebar-content-wrapper">
         <aside className="sidebar">
-          {navItems.map(item => (
-            <div key={item}
-              className={`nav-item ${currentView === item ? 'active' : ''}`}
-              onClick={() => setCurrentView(item)}>
-              {item}
-            </div>
-          ))}
+          {navItems.map(item => {
+            const isChat = item === 'Chat'
+            return (
+              <div key={item}
+                className={`nav-item ${currentView === item ? 'active' : ''}`}
+                onClick={() => setCurrentView(item)}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{item}</span>
+                {isChat && totalUnread > 0 && (
+                  <span style={{ 
+                    background: '#c00', color: 'white', borderRadius: '12px', 
+                    padding: '0.1rem 0.5rem', fontSize: '0.8rem', fontWeight: 'bold' 
+                  }}>
+                    {totalUnread}
+                  </span>
+                )}
+              </div>
+            )
+          })}
         </aside>
 
         <main className="main-content">
@@ -396,6 +487,7 @@ function Drives({ user }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [applyingId, setApplyingId] = useState(null)
+  const [appliedDriveIds, setAppliedDriveIds] = useState(new Set())
   const [form, setForm] = useState({
     company: '', role: '', package: '',
     eligibilityCGPA: '', branches: '', date: '', venue: '', description: ''
@@ -404,20 +496,31 @@ function Drives({ user }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [drivesRes, companiesRes] = await Promise.all([
+        const promises = [
           api.get('/api/drives'),
           api.get('/api/companies')
-        ])
-        setDrives(drivesRes.data)
-        setCompanies(companiesRes.data)
+        ]
+        if (user.role === 'student') {
+          promises.push(api.get('/api/applications/my'))
+        }
+        
+        const results = await Promise.all(promises)
+        setDrives(results[0].data)
+        setCompanies(results[1].data)
+        
+        if (user.role === 'student') {
+          const myApps = results[2].data
+          const ids = new Set(myApps.map(app => app.drive?._id || app.drive))
+          setAppliedDriveIds(ids)
+        }
       } catch {
-        setError('Failed to load drives')
+        setError('Failed to load data')
       } finally {
         setLoading(false)
       }
     }
     fetchData()
-  }, [])
+  }, [user.role])
 
   const handleAdd = async (e) => {
     e.preventDefault()
@@ -442,6 +545,7 @@ function Drives({ user }) {
     try {
       await api.post('/api/applications', { driveId })
       alert('Applied successfully!')
+      setAppliedDriveIds(prev => new Set([...prev, driveId]))
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to apply')
     } finally {
@@ -530,10 +634,10 @@ function Drives({ user }) {
             )}
             {user.role === 'student' && drive.status === 'upcoming' && (
               <button
-                style={{ marginTop: '1rem' }}
-                disabled={applyingId === drive._id}
+                style={{ marginTop: '1rem', opacity: appliedDriveIds.has(drive._id) ? 0.6 : 1, cursor: appliedDriveIds.has(drive._id) ? 'not-allowed' : 'pointer' }}
+                disabled={applyingId === drive._id || appliedDriveIds.has(drive._id)}
                 onClick={() => handleApply(drive._id)}>
-                {applyingId === drive._id ? 'Applying...' : 'Apply Now'}
+                {appliedDriveIds.has(drive._id) ? 'Applied' : applyingId === drive._id ? 'Applying...' : 'Apply Now'}
               </button>
             )}
           </div>

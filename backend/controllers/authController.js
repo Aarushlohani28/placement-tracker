@@ -10,7 +10,7 @@ const generateToken = (id) => {
 // @route   POST /api/auth/register
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password, role, cgpa, branch, year } = req.body
+    const { name, email, password, role, cgpa, branch, year, designation } = req.body
 
     const userExists = await User.findOne({ email })
     if (userExists) {
@@ -27,7 +27,8 @@ const registerUser = async (req, res) => {
       role,
       cgpa,
       branch,
-      year
+      year,
+      designation
     })
 
     res.status(201).json({
@@ -35,6 +36,10 @@ const registerUser = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      cgpa: user.cgpa,
+      branch: user.branch,
+      designation: user.designation,
+      profilePic: user.profilePic,
       token: generateToken(user._id)
     })
   } catch (error) {
@@ -63,6 +68,10 @@ const loginUser = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      cgpa: user.cgpa,
+      branch: user.branch,
+      designation: user.designation,
+      profilePic: user.profilePic,
       token: generateToken(user._id)
     })
   } catch (error) {

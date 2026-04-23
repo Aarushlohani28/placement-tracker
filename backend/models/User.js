@@ -37,6 +37,19 @@ const userSchema = new mongoose.Schema({
   resumeURL: {
     type: String,
     trim: true
+  },
+  designation: {
+    type: String,
+    trim: true
+  },
+  profilePic: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  deletionRequested: {
+    type: Boolean,
+    default: false
   }
 }, { timestamps: true })
 
