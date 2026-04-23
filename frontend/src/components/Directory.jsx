@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import api from '../api'
+import { resolveUrl } from '../utils/resolveUrl'
 
 export default function Directory({ currentUser, onStartChat }) {
   const [users, setUsers] = useState([])
@@ -102,7 +103,7 @@ export default function Directory({ currentUser, onStartChat }) {
             </button>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '1rem' }}>
               <img 
-                src={selectedProfile.profilePic ? `http://localhost:5000${selectedProfile.profilePic}` : 'https://via.placeholder.com/120'} 
+                src={resolveUrl(selectedProfile.profilePic, 'https://via.placeholder.com/120')} 
                 alt={selectedProfile.name} 
                 style={{ width: '120px', height: '120px', objectFit: 'cover', borderRadius: '50%', border: '4px solid var(--color-chamois)' }} 
               />
@@ -133,7 +134,7 @@ export default function Directory({ currentUser, onStartChat }) {
                   Message
                 </button>
                 {selectedProfile.resumeURL && (
-                  <button onClick={() => window.open(`http://localhost:5000${selectedProfile.resumeURL}`, '_blank')} style={{ background: 'var(--color-khaki)', color: 'var(--color-bistre)', padding: '0.6rem 1.5rem' }}>
+                  <button onClick={() => window.open(resolveUrl(selectedProfile.resumeURL), '_blank')} style={{ background: 'var(--color-khaki)', color: 'var(--color-bistre)', padding: '0.6rem 1.5rem' }}>
                     View Resume
                   </button>
                 )}
@@ -155,7 +156,7 @@ function UserCard({ user, onStartChat, onDelete, isAdmin, isDeleteRequest, onSel
       onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
     >
       <img 
-        src={user.profilePic ? `http://localhost:5000${user.profilePic}` : 'https://via.placeholder.com/80'} 
+        src={resolveUrl(user.profilePic, 'https://via.placeholder.com/80')} 
         alt={user.name} 
         style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '50%', marginBottom: '1rem', border: '2px solid var(--color-chamois)' }} 
       />

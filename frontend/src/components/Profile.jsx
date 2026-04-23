@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import api from '../api'
+import { resolveUrl } from '../utils/resolveUrl'
 
 export default function Profile({ user, onUpdateUser, onLogout }) {
   const [file, setFile] = useState(null)
@@ -115,7 +116,7 @@ export default function Profile({ user, onUpdateUser, onLogout }) {
     }
   }
 
-  const picUrl = user.profilePic ? `http://localhost:5000${user.profilePic}` : 'https://via.placeholder.com/150'
+  const picUrl = resolveUrl(user.profilePic, 'https://via.placeholder.com/150')
 
   return (
     <div className="card" style={{ maxWidth: '800px', margin: '0 auto' }}>
@@ -144,7 +145,7 @@ export default function Profile({ user, onUpdateUser, onLogout }) {
               <h4 style={{ margin: '0 0 0.5rem 0', textAlign: 'center' }}>Professional Resume</h4>
               {user.resumeURL && (
                 <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
-                  <a href={`http://localhost:5000${user.resumeURL}`} target="_blank" rel="noreferrer" style={{ fontSize: '0.85rem', color: '#0066cc', textDecoration: 'underline' }}>View Current Resume</a>
+                  <a href={resolveUrl(user.resumeURL)} target="_blank" rel="noreferrer" style={{ fontSize: '0.85rem', color: '#0066cc', textDecoration: 'underline' }}>View Current Resume</a>
                 </div>
               )}
               {resumeMessage && <p style={{ color: resumeMessage.includes('success') ? 'green' : 'red', fontSize: '0.8rem', textAlign: 'center' }}>{resumeMessage}</p>}

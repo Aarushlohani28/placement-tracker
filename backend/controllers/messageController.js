@@ -110,7 +110,8 @@ const deleteChat = async (req, res) => {
 const uploadImage = async (req, res) => {
   try {
     if (req.file) {
-      const mediaUrl = `/uploads/messages/${req.file.filename}`
+      // Cloudinary returns the full absolute URL in req.file.path
+      const mediaUrl = req.file.path
       res.json({ mediaUrl })
     } else {
       res.status(400).json({ message: 'No image file provided' })

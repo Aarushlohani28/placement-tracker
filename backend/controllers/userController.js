@@ -26,8 +26,8 @@ const updateProfilePic = async (req, res) => {
     }
 
     if (req.file) {
-      // The file path relative to standard public path
-      user.profilePic = `/uploads/${req.file.filename}`
+      // Cloudinary returns the full URL in req.file.path
+      user.profilePic = req.file.path
       await user.save()
       res.json({ message: 'Profile picture updated', profilePic: user.profilePic })
     } else {
@@ -121,7 +121,8 @@ const uploadResume = async (req, res) => {
     if (user.role !== 'student') return res.status(400).json({ message: 'Only students can have resumes' })
 
     if (req.file) {
-      user.resumeURL = `/uploads/resumes/${req.file.filename}`
+      // Cloudinary returns the full URL in req.file.path
+      user.resumeURL = req.file.path
       await user.save()
       res.json({ message: 'Resume uploaded', resumeURL: user.resumeURL })
     } else {

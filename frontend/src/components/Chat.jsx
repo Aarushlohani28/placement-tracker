@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../api'
 import { socket } from '../socket'
+import { resolveUrl } from '../utils/resolveUrl'
 
 export default function Chat({ currentUser, initialTargetUser, conversations, refreshConversations }) {
   const [targetUser, setTargetUser] = useState(initialTargetUser || null)
@@ -142,7 +143,7 @@ export default function Chat({ currentUser, initialTargetUser, conversations, re
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                   <img 
-                    src={u.profilePic ? `http://localhost:5000${u.profilePic}` : 'https://via.placeholder.com/40'} 
+                    src={resolveUrl(u.profilePic, 'https://via.placeholder.com/40')} 
                     alt={u.name} 
                     style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '50%' }} 
                   />
@@ -177,7 +178,7 @@ export default function Chat({ currentUser, initialTargetUser, conversations, re
                   &larr; Back
                 </button>
                 <img 
-                  src={targetUser.profilePic ? `http://localhost:5000${targetUser.profilePic}` : 'https://via.placeholder.com/40'} 
+                  src={resolveUrl(targetUser.profilePic, 'https://via.placeholder.com/40')} 
                   alt={targetUser.name} 
                   style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '50%' }} 
                 />
@@ -210,9 +211,9 @@ export default function Chat({ currentUser, initialTargetUser, conversations, re
                       {msg.mediaUrl && (
                         <div style={{ marginBottom: msg.content ? '0.5rem' : '0' }}>
                           <img 
-                            src={`http://localhost:5000${msg.mediaUrl}`} 
+                            src={resolveUrl(msg.mediaUrl)} 
                             alt="Attachment" 
-                            onClick={() => setSelectedPhoto(`http://localhost:5000${msg.mediaUrl}`)}
+                            onClick={() => setSelectedPhoto(resolveUrl(msg.mediaUrl))}
                             style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '8px', objectFit: 'cover', cursor: 'pointer' }} 
                             onError={(e) => e.target.style.display = 'none'}
                           />
